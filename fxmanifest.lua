@@ -1,7 +1,7 @@
 fx_version 'cerulean'
 game 'gta5'
 
-author 'Your Name'
+author 'Xoxo Pistols'
 description 'Advanced Kill Ranking System with Discord Integration'
 version '1.0.0'
 
