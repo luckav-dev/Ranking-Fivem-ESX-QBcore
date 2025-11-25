@@ -1,4 +1,3 @@
-```markdown
 <div align="center">
 
 # 🏆 FiveM Kill Ranking System
@@ -299,4 +298,3 @@ If you found this resource helpful, please consider giving it a ⭐ on GitHub!
 **[⬆ Back to Top](#-fivem-kill-ranking-system)**
 
 </div>
-```
