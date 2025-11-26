@@ -15,6 +15,10 @@
 
 ---
 
+![Ranking System](https://media.discordapp.net/attachments/1426292367580725308/1443035025322016768/image.png?ex=69279a98&is=69264918&hm=eccb12cf31bbd2914ddfad3e676a0adc807bc8dcbce5f8da3e6e879b0059c0a2&=&format=webp&quality=lossless&width=1796&height=902)
+
+---
+
 ## 📋 Features
 
 ✅ **Multi-Framework Support** - Works with ESX Legacy, QBCore, and Standalone  
@@ -298,3 +302,4 @@ If you found this resource helpful, please consider giving it a ⭐ on GitHub!
 **[⬆ Back to Top](#-fivem-kill-ranking-system)**
 
 </div>
+
