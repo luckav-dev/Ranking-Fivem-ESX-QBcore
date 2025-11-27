@@ -79,15 +79,21 @@ function toggleUI(show) {
         searchInput.value = '';
         state.searchQuery = '';
     } else {
-        uiContainer.classList.remove('visible');
-        
-        fetch(`https://${GetParentResourceName()}/close`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json; charset=UTF-8'
-            },
-            body: JSON.stringify({})
-        }).catch(() => {});
+        if (window.invokeNative) {
+            fetch(`https://${GetParentResourceName()}/close`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json; charset=UTF-8'
+                },
+                body: JSON.stringify({})
+            }).then(() => {
+                uiContainer.classList.remove('visible');
+            }).catch(() => {
+                uiContainer.classList.remove('visible');
+            });
+        } else {
+            uiContainer.classList.remove('visible');
+        }
     }
 }
 

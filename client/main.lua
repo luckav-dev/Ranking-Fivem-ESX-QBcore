@@ -12,9 +12,6 @@ end)
 
 RegisterNUICallback('close', function(data, cb)
     SetNuiFocus(false, false)
-    SendNUIMessage({
-        type = 'close'
-    })
     cb('ok')
 end)
 
