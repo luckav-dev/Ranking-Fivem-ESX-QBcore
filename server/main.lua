@@ -1,5 +1,6 @@
 local discordCache = {}
 local lastCacheClean = os.time()
+local pendingAvatars = {}
 
 function GetDiscordId(source)
     local identifiers = GetPlayerIdentifiers(source)
@@ -11,18 +12,32 @@ function GetDiscordId(source)
     return nil
 end
 
-function GetDiscordAvatar(discordId)
+function GetDiscordAvatar(discordId, callback)
     if not Config.Discord.Enabled or not discordId then
+        if callback then callback(Config.DefaultAvatar) end
         return Config.DefaultAvatar
     end
     
     if discordCache[discordId] and (os.time() - discordCache[discordId].timestamp) < Config.Discord.CacheTime then
+        if callback then callback(discordCache[discordId].avatar) end
         return discordCache[discordId].avatar
     end
     
-    local avatar = Config.DefaultAvatar
+    if pendingAvatars[discordId] then
+        if callback then
+            table.insert(pendingAvatars[discordId], callback)
+        end
+        return Config.DefaultAvatar
+    end
+    
+    pendingAvatars[discordId] = {}
+    if callback then
+        table.insert(pendingAvatars[discordId], callback)
+    end
     
     PerformHttpRequest('https://discord.com/api/v10/users/' .. discordId, function(statusCode, response, headers)
+        local avatar = Config.DefaultAvatar
+        
         if statusCode == 200 then
             local data = json.decode(response)
             if data and data.avatar then
@@ -38,43 +53,40 @@ function GetDiscordAvatar(discordId)
                 }
             end
         end
+        
+        if pendingAvatars[discordId] then
+            for _, cb in ipairs(pendingAvatars[discordId]) do
+                cb(avatar)
+            end
+            pendingAvatars[discordId] = nil
+        end
     end, 'GET', '', {
         ['Authorization'] = 'Bot ' .. Config.Discord.BotToken,
         ['Content-Type'] = 'application/json'
     })
     
-    Wait(500)
-    
-    if discordCache[discordId] then
-        return discordCache[discordId].avatar
-    end
-    
-    return avatar
+    return Config.DefaultAvatar
 end
 
 function InitializePlayerStats(identifier, playerName, discordId)
-    MySQL.Async.fetchScalar('SELECT identifier FROM player_stats WHERE identifier = @identifier', {
-        ['@identifier'] = identifier
-    }, function(result)
-        if not result then
-            local avatar = GetDiscordAvatar(discordId)
-            
-            MySQL.Async.execute('INSERT INTO player_stats (identifier, player_name, discord_id, discord_avatar, kills, deaths, assists) VALUES (@identifier, @playerName, @discordId, @avatar, 0, 0, 0)', {
-                ['@identifier'] = identifier,
-                ['@playerName'] = playerName,
-                ['@discordId'] = discordId,
-                ['@avatar'] = avatar
-            })
-        else
-            local avatar = GetDiscordAvatar(discordId)
-            
-            MySQL.Async.execute('UPDATE player_stats SET player_name = @playerName, discord_id = @discordId, discord_avatar = @avatar WHERE identifier = @identifier', {
-                ['@identifier'] = identifier,
-                ['@playerName'] = playerName,
-                ['@discordId'] = discordId,
-                ['@avatar'] = avatar
-            })
-        end
+    exports.oxmysql:scalar('SELECT identifier FROM player_stats WHERE identifier = ?', {identifier}, function(result)
+        GetDiscordAvatar(discordId, function(avatar)
+            if not result then
+                exports.oxmysql:execute('INSERT INTO player_stats (identifier, player_name, discord_id, discord_avatar, kills, deaths, assists) VALUES (?, ?, ?, ?, 0, 0, 0)', {
+                    identifier,
+                    playerName,
+                    discordId,
+                    avatar
+                })
+            else
+                exports.oxmysql:execute('UPDATE player_stats SET player_name = ?, discord_id = ?, discord_avatar = ? WHERE identifier = ?', {
+                    playerName,
+                    discordId,
+                    avatar,
+                    identifier
+                })
+            end
+        end)
     end)
 end
 
@@ -86,9 +98,7 @@ AddEventHandler('ranking:server:registerDeath', function(killerServerId, weapon,
     
     if not victimIdentifier then return end
     
-    MySQL.Async.execute('UPDATE player_stats SET deaths = deaths + 1, current_kill_streak = 0 WHERE identifier = @identifier', {
-        ['@identifier'] = victimIdentifier
-    })
+    exports.oxmysql:execute('UPDATE player_stats SET deaths = deaths + 1, current_kill_streak = 0 WHERE identifier = ?', {victimIdentifier})
     
     if Config.DeathPenalty.Enabled then
         Framework.RemoveMoney(victimSource, Config.DeathPenalty.Money)
@@ -99,33 +109,27 @@ AddEventHandler('ranking:server:registerDeath', function(killerServerId, weapon,
         local killerName = Framework.GetPlayerName(killerServerId)
         
         if killerIdentifier then
-            MySQL.Async.execute('UPDATE player_stats SET kills = kills + 1, current_kill_streak = current_kill_streak + 1 WHERE identifier = @identifier', {
-                ['@identifier'] = killerIdentifier
-            }, function(affectedRows)
-                MySQL.Async.fetchScalar('SELECT current_kill_streak FROM player_stats WHERE identifier = @identifier', {
-                    ['@identifier'] = killerIdentifier
-                }, function(streak)
+            exports.oxmysql:execute('UPDATE player_stats SET kills = kills + 1, current_kill_streak = current_kill_streak + 1 WHERE identifier = ?', {killerIdentifier}, function(affectedRows)
+                exports.oxmysql:scalar('SELECT current_kill_streak FROM player_stats WHERE identifier = ?', {killerIdentifier}, function(streak)
                     if streak then
-                        MySQL.Async.execute('UPDATE player_stats SET longest_kill_streak = GREATEST(longest_kill_streak, @streak) WHERE identifier = @identifier', {
-                            ['@identifier'] = killerIdentifier,
-                            ['@streak'] = streak
+                        exports.oxmysql:execute('UPDATE player_stats SET longest_kill_streak = GREATEST(longest_kill_streak, ?) WHERE identifier = ?', {
+                            streak,
+                            killerIdentifier
                         })
                     end
                 end)
             end)
             
             if headshot then
-                MySQL.Async.execute('UPDATE player_stats SET headshots = headshots + 1 WHERE identifier = @identifier', {
-                    ['@identifier'] = killerIdentifier
-                })
+                exports.oxmysql:execute('UPDATE player_stats SET headshots = headshots + 1 WHERE identifier = ?', {killerIdentifier})
             end
             
-            MySQL.Async.execute('INSERT INTO kill_logs (killer_identifier, victim_identifier, weapon, distance, headshot) VALUES (@killer, @victim, @weapon, @distance, @headshot)', {
-                ['@killer'] = killerIdentifier,
-                ['@victim'] = victimIdentifier,
-                ['@weapon'] = weapon or 'unknown',
-                ['@distance'] = distance,
-                ['@headshot'] = headshot and 1 or 0
+            exports.oxmysql:execute('INSERT INTO kill_logs (killer_identifier, victim_identifier, weapon, distance, headshot) VALUES (?, ?, ?, ?, ?)', {
+                killerIdentifier,
+                victimIdentifier,
+                weapon or 'unknown',
+                distance,
+                headshot and 1 or 0
             })
             
             if Config.KillReward.Enabled then
@@ -142,9 +146,7 @@ RegisterNetEvent('ranking:server:requestData')
 AddEventHandler('ranking:server:requestData', function()
     local source = source
     
-    MySQL.Async.fetchAll('SELECT * FROM player_stats ORDER BY kills DESC LIMIT @limit', {
-        ['@limit'] = Config.Database.TopPlayersLimit
-    }, function(results)
+    exports.oxmysql:query('SELECT * FROM player_stats ORDER BY kills DESC LIMIT ?', {Config.Database.TopPlayersLimit}, function(results)
         local players = {}
         
         for i, row in ipairs(results) do
@@ -171,8 +173,9 @@ AddEventHandler('playerConnecting', function(playerName, setKickReason, deferral
     local discordId = GetDiscordId(source)
     
     if identifier then
-        Wait(1000)
-        InitializePlayerStats(identifier, playerName, discordId)
+        SetTimeout(1000, function()
+            InitializePlayerStats(identifier, playerName, discordId)
+        end)
     end
 end)
 
@@ -194,7 +197,7 @@ end)
 CreateThread(function()
     Wait(5000)
     
-    MySQL.Async.fetchAll('SELECT * FROM player_stats', {}, function(results)
+    exports.oxmysql:query('SELECT * FROM player_stats', {}, function(results)
         if results then
             print('^2[Ranking System]^7 Database connected successfully')
             print('^2[Ranking System]^7 Loaded ' .. #results .. ' player records')
@@ -208,14 +211,15 @@ if Config.DebugMode then
     RegisterCommand('rankingdebug', function(source, args)
         local identifier = Framework.GetPlayerIdentifier(source)
         local discordId = GetDiscordId(source)
-        local avatar = GetDiscordAvatar(discordId)
         
-        print('^3[Debug] Player Info:^7')
-        print('  Source: ' .. source)
-        print('  Identifier: ' .. (identifier or 'nil'))
-        print('  Discord ID: ' .. (discordId or 'nil'))
-        print('  Avatar URL: ' .. avatar)
-        
-        Framework.Notify(source, 'Debug info printed to console', 'success')
+        GetDiscordAvatar(discordId, function(avatar)
+            print('^3[Debug] Player Info:^7')
+            print('  Source: ' .. source)
+            print('  Identifier: ' .. (identifier or 'nil'))
+            print('  Discord ID: ' .. (discordId or 'nil'))
+            print('  Avatar URL: ' .. avatar)
+            
+            Framework.Notify(source, 'Debug info printed to console', 'success')
+        end)
     end, true)
 end

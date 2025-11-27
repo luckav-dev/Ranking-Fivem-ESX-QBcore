@@ -17,7 +17,7 @@ end)
 
 CreateThread(function()
     while true do
-        Wait(100)
+        Wait(500)
         
         local playerPed = PlayerPedId()
         
@@ -30,13 +30,15 @@ CreateThread(function()
             local distance = 0
             local headshot = false
             
-            if killer ~= playerPed then
+            if killer ~= playerPed and killer ~= 0 then
                 if IsEntityAPed(killer) and IsPedAPlayer(killer) then
                     killerServerId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(killer))
                     local killerCoords = GetEntityCoords(killer)
                     local victimCoords = GetEntityCoords(playerPed)
                     distance = #(killerCoords - victimCoords)
-                    headshot = (GetPedLastDamageBone(playerPed) == 31086)
+                    
+                    local boneHit = GetPedLastDamageBone(playerPed)
+                    headshot = (boneHit == 31086)
                 end
             end
             
