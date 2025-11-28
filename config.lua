@@ -16,16 +16,18 @@ Config.Database = {
 
 Config.RankingCommand = 'ranking'
 
+-- Recompensa por Kill
 Config.KillReward = {
-    Enabled = true,
-    Money = 100,
-    AccountType = 'money'
+    Enabled = true,           -- Activar/desactivar recompensa por kill
+    Money = 100,              -- Cantidad de dinero a dar
+    AccountType = 'money'     -- Tipo de cuenta: 'money' (efectivo), 'bank' (banco), 'black_money' (dinero negro)
 }
 
+-- Penalización por Muerte
 Config.DeathPenalty = {
-    Enabled = false,
-    Money = 50,
-    AccountType = 'money'
+    Enabled = false,          -- Activar/desactivar penalización por muerte
+    Money = 50,               -- Cantidad de dinero a quitar
+    AccountType = 'money'     -- Tipo de cuenta: 'money' (efectivo), 'bank' (banco), 'black_money' (dinero negro)
 }
 
 Config.VehicleKillsCount = true

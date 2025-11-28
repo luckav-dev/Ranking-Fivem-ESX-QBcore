@@ -164,7 +164,7 @@ function escapeHtml(text) {
 
 function GetParentResourceName() {
     if (window.invokeNative) {
-        return window.GetParentResourceName();
+        return invokeNative('getParentResourceName');
     }
     return 'ranking_system';
 }

@@ -179,6 +179,50 @@ AddEventHandler('playerConnecting', function(playerName, setKickReason, deferral
     end
 end)
 
+
+RegisterNetEvent('esx:playerLoaded')
+AddEventHandler('esx:playerLoaded', function(source)
+    local identifier = Framework.GetPlayerIdentifier(source)
+    local playerName = Framework.GetPlayerName(source)
+    local discordId = GetDiscordId(source)
+    
+    if identifier then
+        InitializePlayerStats(identifier, playerName, discordId)
+    end
+end)
+
+RegisterNetEvent('QBCore:Server:PlayerLoaded')
+AddEventHandler('QBCore:Server:PlayerLoaded', function(Player)
+    local source = Player.PlayerData.source
+    local identifier = Framework.GetPlayerIdentifier(source)
+    local playerName = Framework.GetPlayerName(source)
+    local discordId = GetDiscordId(source)
+    
+    if identifier then
+        InitializePlayerStats(identifier, playerName, discordId)
+    end
+end)
+
+
+AddEventHandler('onResourceStart', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    
+    Wait(5000)
+    
+    local players = GetPlayers()
+    for _, playerId in ipairs(players) do
+        local identifier = Framework.GetPlayerIdentifier(playerId)
+        local playerName = Framework.GetPlayerName(playerId)
+        local discordId = GetDiscordId(playerId)
+        
+        if identifier then
+            InitializePlayerStats(identifier, playerName, discordId)
+        end
+    end
+    
+    print('^2[Ranking System]^7 Initialized ' .. #players .. ' connected players')
+end)
+
 CreateThread(function()
     while true do
         Wait(Config.Discord.CacheTime * 1000)

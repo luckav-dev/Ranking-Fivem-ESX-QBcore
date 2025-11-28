@@ -69,7 +69,11 @@ if IsDuplicityVersion() then
         if frameworkName == 'esx' then
             local xPlayer = Framework.GetPlayer(source)
             if xPlayer then
-                xPlayer.addAccountMoney(Config.KillReward.AccountType, amount)
+                if Config.KillReward.AccountType == 'money' then
+                    xPlayer.addMoney(amount)
+                else
+                    xPlayer.addAccountMoney(Config.KillReward.AccountType, amount)
+                end
             end
         elseif frameworkName == 'qbcore' then
             local Player = Framework.GetPlayer(source)
@@ -85,7 +89,11 @@ if IsDuplicityVersion() then
         if frameworkName == 'esx' then
             local xPlayer = Framework.GetPlayer(source)
             if xPlayer then
-                xPlayer.removeAccountMoney(Config.DeathPenalty.AccountType, amount)
+                if Config.DeathPenalty.AccountType == 'money' then
+                    xPlayer.removeMoney(amount)
+                else
+                    xPlayer.removeAccountMoney(Config.DeathPenalty.AccountType, amount)
+                end
             end
         elseif frameworkName == 'qbcore' then
             local Player = Framework.GetPlayer(source)
