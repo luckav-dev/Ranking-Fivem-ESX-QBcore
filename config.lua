@@ -27,7 +27,7 @@ Config.DeathPenalty = {
     AccountType = 'money'     -- Account type: 'money' (cash), 'bank', 'black_money'
 }
 
-Config.VehicleKillsCount = true
+Config.VehicleKillsCount = false
 
 Config.SuicideCountsAsDeath = true
 
